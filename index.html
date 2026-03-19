@@ -18,10 +18,15 @@
   .legend { display: flex; gap: 16px; margin-left: auto; align-items: center; font-size: 12px; color: #555; }
   .legend-item { display: flex; align-items: center; gap: 5px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .chart-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; }
-  canvas { max-height: 520px; }
+  .chart-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 20px; height: 75vh; min-height: 500px; }
+  canvas { width: 100% !important; height: 100% !important; }
   .table-card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px; }
-  .table-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .table-header { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .table-header h3 { font-size: 14px; font-weight: 700; margin: 0; }
+  .tab-group { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+  .tab-btn { padding: 5px 14px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; background: white; color: #555; transition: all 0.15s; }
+  .tab-btn.active { background: #111; color: white; }
+  .tab-btn:not(.active):hover { background: #f3f4f6; }
   table { width: 100%; font-size: 12px; border-collapse: collapse; }
   thead tr { border-bottom: 2px solid #e5e7eb; text-align: left; }
   th { padding: 6px 8px; color: #666; font-weight: 600; }
@@ -69,7 +74,13 @@
   <div id="tooltip"></div>
 
   <div class="table-card">
-    <h3>Top 10 Priority Bids</h3>
+    <div class="table-header">
+      <h3>Priority Bids</h3>
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="switchTab('top10')">Top 10</button>
+        <button class="tab-btn" onclick="switchTab('full')">Full List</button>
+      </div>
+    </div>
     <table><thead><tr>
       <th>#</th><th>Project</th><th>Location</th><th class="right">Distance</th><th class="right">Margin</th><th class="right">Amount</th><th class="right">Stage</th>
     </tr></thead><tbody id="topTable"></tbody></table>
@@ -97,6 +108,22 @@ function filtered() {
     .filter(d => d.distance <= maxDist)
     .filter(d => stageFilter === "all" || d.stage === stageFilter)
     .map(d => ({ ...d, score: getScore(d.distance, d.margin), radius: Math.max(3, Math.min(18, Math.sqrt(d.amount / 5000))) }));
+}
+
+let currentTab = "top10";
+let sortedData = [];
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.textContent === (tab === "top10" ? "Top 10" : "Full List")));
+  renderTable();
+}
+
+function renderTable() {
+  const items = currentTab === "top10" ? sortedData.slice(0, 10) : sortedData;
+  document.getElementById("topTable").innerHTML = items.map((j, i) =>
+    `<tr><td class="rank">${i+1}</td><td class="project-name" title="${j.name}">${j.name}</td><td class="location">${j.city}, ${j.state}</td><td class="right">${j.distance} mi</td><td class="right bold">${j.margin.toFixed(1)}%</td><td class="right">$${j.amount.toLocaleString()}</td><td class="right location">${j.stage}</td></tr>`
+  ).join("");
 }
 
 function buildChart() {
@@ -147,10 +174,8 @@ function buildChart() {
   });
 
   // Top table
-  const top = [...data].sort((a,b) => b.score - a.score).slice(0, 10);
-  document.getElementById("topTable").innerHTML = top.map((j, i) =>
-    `<tr><td class="rank">${i+1}</td><td class="project-name" title="${j.name}">${j.name}</td><td class="location">${j.city}, ${j.state}</td><td class="right">${j.distance} mi</td><td class="right bold">${j.margin.toFixed(1)}%</td><td class="right">$${j.amount.toLocaleString()}</td><td class="right location">${j.stage}</td></tr>`
-  ).join("");
+  sortedData = [...data].sort((a,b) => b.score - a.score);
+  renderTable();
 
   document.getElementById("footerText").textContent = `Dashed lines = averages (${avg_d.toFixed(0)} mi, ${avg_m.toFixed(1)}% margin). Showing ${data.length} bids.`;
 }
