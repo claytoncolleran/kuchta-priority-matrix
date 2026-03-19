@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kuchta Bid Priority Matrix</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #111; padding: 24px; }
@@ -27,6 +29,10 @@
   .tab-btn { padding: 5px 14px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; background: white; color: #555; transition: all 0.15s; }
   .tab-btn.active { background: #111; color: white; }
   .tab-btn:not(.active):hover { background: #f3f4f6; }
+  .reset-zoom { position: absolute; top: 12px; right: 12px; padding: 5px 12px; font-size: 11px; font-weight: 600; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #555; cursor: pointer; z-index: 10; display: none; }
+  .reset-zoom:hover { background: #f3f4f6; }
+  .chart-card { position: relative; }
+  .zoom-hint { position: absolute; bottom: 8px; right: 12px; font-size: 11px; color: #aaa; z-index: 10; }
   table { width: 100%; font-size: 12px; border-collapse: collapse; }
   thead tr { border-bottom: 2px solid #e5e7eb; text-align: left; }
   th { padding: 6px 8px; color: #666; font-weight: 600; }
@@ -69,7 +75,9 @@
   </div>
 
   <div class="chart-card">
+    <button class="reset-zoom" id="resetZoom" onclick="resetZoom()">Reset Zoom</button>
     <canvas id="chart"></canvas>
+    <span class="zoom-hint">Scroll to zoom &middot; Drag to pan</span>
   </div>
   <div id="tooltip"></div>
 
@@ -110,6 +118,10 @@ function filtered() {
     .map(d => ({ ...d, score: getScore(d.distance, d.margin), radius: Math.max(3, Math.min(18, Math.sqrt(d.amount / 5000))) }));
 }
 
+function resetZoom() {
+  if (chart) { chart.resetZoom(); document.getElementById("resetZoom").style.display = "none"; }
+}
+
 let currentTab = "top10";
 let sortedData = [];
 
@@ -148,7 +160,16 @@ function buildChart() {
       plugins: {
         legend: { display: false },
         tooltip: { enabled: false, external: externalTooltip },
-        annotation: undefined
+        annotation: undefined,
+        zoom: {
+          pan: { enabled: true, mode: "xy" },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: "xy",
+            onZoomComplete: () => { document.getElementById("resetZoom").style.display = "block"; }
+          }
+        }
       },
       scales: {
         x: { title: { display: true, text: "Distance from Chesapeake, VA (miles)", font: { size: 12 } }, min: 0, max: maxDist, grid: { color: "#f0f0f0" } },
